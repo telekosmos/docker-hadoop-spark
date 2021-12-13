@@ -112,6 +112,8 @@ services:
   hive-metastore-postgresql:
     image: bde2020/hive-metastore-postgresql:2.3.0
     container_name: hive-metastore-postgresql
+    ports:
+      - 5432:5432
 
   presto-coordinator:
     image: shawnzhu/prestodb:0.181
