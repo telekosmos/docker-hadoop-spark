@@ -70,7 +70,7 @@ Go to the command line of the Spark master and start PySpark.
 Load breweries.csv from HDFS.
 ```
   brewfile = spark.read.csv("hdfs://namenode:9000/data/openbeer/breweries/breweries.csv")
-  
+
   brewfile.show()
 +----+--------------------+-------------+-----+---+
 | _c0|                 _c1|          _c2|  _c3|_c4|
@@ -109,14 +109,14 @@ Go to http://<dockerhadoop_IP_address>:8080 or http://localhost:8080/ on your Do
 Go to the command line of the Spark master and start spark-shell.
 ```
   docker exec -it spark-master bash
-  
+
   spark/bin/spark-shell --master spark://spark-master:7077
 ```
 
 Load breweries.csv from HDFS.
 ```
   val df = spark.read.csv("hdfs://namenode:9000/data/openbeer/breweries/breweries.csv")
-  
+
   df.show()
 +----+--------------------+-------------+-----+---+
 | _c0|                 _c1|          _c2|  _c3|_c4|
@@ -169,8 +169,8 @@ tcp        0      0 0.0.0.0:10000           0.0.0.0:*               LISTEN      
 Okay. Beeline is the command line interface with Hive. Let's connect to hiveserver2 now.
 
 ```
-  beeline -u jdbc:hive2://localhost:10000 -n root
-  
+  beeline -u jdbc:hive2://localhost:10000 -n root --showDbInPrompt=true
+
   !connect jdbc:hive2://127.0.0.1:10000 scott tiger
 ```
 
@@ -179,7 +179,7 @@ Didn't expect to encounter scott/tiger again after my Oracle days. But there you
 Not a lot of databases here yet.
 ```
   show databases;
-  
+
 +----------------+
 | database_name  |
 +----------------+
