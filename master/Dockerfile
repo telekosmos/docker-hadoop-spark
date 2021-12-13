@@ -4,6 +4,8 @@ COPY master.sh /
 RUN chown -R root:root /master.sh
 RUN chmod u+x /master.sh
 
+COPY hive-site.xml /spark/conf/
+
 ENV SPARK_MASTER_PORT 7077
 ENV SPARK_MASTER_WEBUI_PORT 8080
 ENV SPARK_MASTER_LOG /spark/logs
