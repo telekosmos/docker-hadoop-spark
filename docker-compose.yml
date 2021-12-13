@@ -60,7 +60,8 @@ services:
       - ./hadoop.env
 
   spark-master:
-    image: bde2020/spark-master:3.0.0-hadoop3.2
+    # image: bde2020/spark-master:3.0.0-hadoop3.2
+    build: ./master
     container_name: spark-master
     depends_on:
       - namenode
@@ -122,4 +123,3 @@ volumes:
   hadoop_namenode:
   hadoop_datanode:
   hadoop_historyserver:
-
