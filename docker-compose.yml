@@ -114,6 +114,8 @@ services:
     container_name: hive-metastore-postgresql
     ports:
       - 5432:5432
+    volumes:
+      - "./hive/metastore/postgresql/data:/var/lib/postgresql/data"
 
   presto-coordinator:
     image: shawnzhu/prestodb:0.181
