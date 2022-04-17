@@ -1,18 +1,30 @@
-[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/big-data-europe/Lobby)
-
 # Docker multi-container environment with Hadoop, Spark and Hive
 
-This is it: a Docker multi-container environment with Hadoop (HDFS), Spark and Hive. But without the large memory requirements of a Cloudera sandbox. (On my Windows 10 laptop (with WSL2) it seems to consume a mere 3 GB.)
+This is it: a Docker multi-container environment with Hadoop 3.2 (HDFS), Spark 2.4.5 and Hive. But without the large memory requirements of a Cloudera sandbox.
 
-The only thing lacking, is that Hive server doesn't start automatically. To be added when I understand how to do that in docker-compose.
+The services composing the environment are:
+
+- spark-worker-1
+- hive-server
+- spark-master
+- datanode
+- nodemanager
+- historyserver
+- presto-coordinator
+- hive-metastore-postgresql
+- namenode
+- resourcemanager
+- hive-metastore
 
 
 ## Quick Start
 
 To deploy an the HDFS-Spark-Hive cluster, run:
 ```
-  docker-compose up
+  docker-compose up -d --build
 ```
+The `--build` parameter is needed as there are some services with slightly customized Dockerfiles to fix missing features
+/add another ones (like persistence in the HDFS space after across restarts)
 
 `docker-compose` creates a docker network that can be found by running `docker network list`, e.g. `docker-hadoop-spark-hive_default`.
 
@@ -55,6 +67,7 @@ Copy breweries.csv to HDFS:
   hdfs dfs -put breweries.csv /data/openbeer/breweries/breweries.csv
 ```
 
+To access to the _namenode_ programmatically is necessary to use the endpoint `hdfs://namenode:9000/`
 
 ## Quick Start Spark (PySpark)
 
@@ -146,8 +159,76 @@ only showing top 20 rows
 
 ```
 
-How cool is that? Your own Spark cluster to play with.
+### Deploy remotely
 
+Usually we use the `spark-submit` script to submit Spark _programs_ (_scripts_). The following script can be used to
+deploy automatically a Scala Spark program to the spark environment, given it is running in the `remote_host` machine
+and that machine has the proper configuration to accept ssh connections (**ssh daemon** is installed and running)
+
+```sh
+# $1 -> scala version
+# $2 -> jar filename
+# $3 -> class to run
+sbt package
+scp target/scala-"$1"/"$2" user@remote_host:/tmp
+ssh user@remote_host docker cp /tmp/"$2" spark-master:/tmp
+ssh user@remote_host docker exec spark-master spark-submit \
+--master spark://spark-master:7077 --deploy-mode client --class "$3" /tmp/"$2"
+```
+
+This script is intended to be run from a _development_ box and it has to be located in the root folder of a Scala project.
+It:
+- **package**s the project
+- **remote-copy** the generated jar package to the `/tmp` folder of the remote host
+- **copy** the jar file into the `spark-master` docker container
+- runs **spark-submit** inside the `spark-master` container to deploy the program in the cluster
+
+Further customizations and configuration for the _spark-submit_ script can be added (refer to the [documentation](https://spark.apache.org/docs/2.4.5/submitting-applications.html)).
+
+### Remote debug from Intellij
+
+This method allows to debug a Spark program deployed and submitted to the cluster, but we need some adjustments in order to
+connect Intellij with the docker (in a remote machine):
+
+- Be aware we've published the port `4747` in `spark-master` container. This is the port we will use to make the jvm listen for connections to start a debugging session
+- Given this port we have to create in Intellij a **Run configuration** with type **Remote JVM debug**
+- Debug mode has to be **Attach to remote JVM**
+- **Host** is the IP where the remote JVM is going to be running. This is **not** the Docker IP as the host IP. We've already published the port in the container, and this is automatically published to the network by Docker. So if the `spark-master` container IP is _172.29.1.10_ and the host machine is **192.168.1.22**, the latter is what we have to set in Intellij for **Host**.
+- **Port** is 4747, but it can be whatever always it matches with the port (address) in the configuration **and** is published in the container
+- So the preview port is related to the arguments for the remote JVM: `-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=4747`
+
+Then, we can use the following script to automate the packaging and deployment
+
+```sh
+# $1 -> scala version
+# $2 -> jar filename
+# $3 -> class to run
+sbt package
+scp target/scala-"$1"/"$2" telekosmos@192.168.1.50:/tmp
+ssh telekosmos@192.168.1.50 docker cp /tmp/"$2" spark-master:/tmp
+ssh telekosmos@192.168.1.50 docker exec -t spark-master spark-submit --packages org.apache.spark:spark-avro_2.12:3.0.0 \
+--master spark://spark-master:7077 --deploy-mode client \
+--conf "spark.driver.extraJavaOptions=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=4747" --class "$3" /tmp/"$2"
+```
+
+Be aware of `--conf "spark.driver.extraJavaOptions=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=4747"`, that port is the same we have to configure in Intellij and published in the container.
+
+Once the script is run, we'll see in the terminal
+
+`Listening for transport dt_socket at address: 4747`
+
+To start debugging we just have to hit the **Debug** 🪲 button in Intellij.
+
+If the debugging session ends up with a uncaught exception. we may have to kill the process in the cluster as it will be listening for connections and we won't be able to deploy another debugging session.
+
+The same debugging session can be started straight from the `spark-master` container always we have the jar file persisted inside. To do that, just
+```sh
+$ docker exec -it spark-master /bin/bash
+bash-5.0# spark-submit --master spark://spark-master:7077 --deploy-mode client \
+>  --conf spark.driver.extraJavaOptions=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=4747 \
+>  --class fully.qualified.class --packages org.apache.spark:spark-avro_2.12:3.0.0 /path/to/package.jar
+Listening for transport dt_socket at address: 4747
+```
 
 ## Quick Start Hive
 
