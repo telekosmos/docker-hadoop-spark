@@ -13,6 +13,6 @@ ENV SPARK_MASTER_LOG /spark/logs
 ENV SPARK_HOME=/spark
 ENV PATH=${SPARK_HOME}/bin:$PATH
 
-EXPOSE 8080 7077 6066
+EXPOSE 8080 7077 6066 4747
 
 CMD ["/bin/bash", "/master.sh"]
