@@ -240,7 +240,16 @@ Go to the command line of the Hive server and start hiveserver2
   hiveserver2
 ```
 
-Maybe a little check that something is listening on port 10000 now
+Also the Hive metastore (postgres based) can be accessed as well:
+
+```
+docker exec -it hive-metastore-postgresql bash
+```
+
+then connect to postgres metastore with `psql -U postgres`.
+
+
+Once Hive server started, maybe a little check that something is listening on port 10000 now
 ```
   netstat -anp | grep 10000
 tcp        0      0 0.0.0.0:10000           0.0.0.0:*               LISTEN      446/java
@@ -314,6 +323,19 @@ And have a little select statement going.
 
 There you go: your private Hive server to play with.
 
+Remember that to setup a table in Hive out of a file in HDFS is better (necessary maybe) to create the table using HQL just like
+
+```sql
+CREATE EXTERNAL TABLE IF NOT EXISTS categories(
+    category_id INT,
+    category_department_id INT,
+    name VARCHAR(100))
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+location 'hdfs://namenode:9000/dataset/retail_db/categories';
+```
+
 
 ## Configure Environment Variables
 
@@ -340,3 +362,9 @@ The available configurations are:
 * /etc/hadoop/mapred-site.xml  MAPRED_CONF
 
 If you need to extend some other configuration file, refer to base/entrypoint.sh bash script.
+
+
+## Notes
+
+- Some libraries can be _missing_ in the containers (_lz4_ libs are namely missing, _gzip_ works ok). To install, it may be needed to update Dockerfile(s) to run the package manager to add them.
+- The base containers are based on a variety of linux flavours (_alpine_, _ubuntu_, _centOS_, ...). If something has to be added, please refer to the documentation of the base images. PRs welcome ☺️
